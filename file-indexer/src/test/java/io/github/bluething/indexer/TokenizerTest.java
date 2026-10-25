@@ -37,6 +37,13 @@ class TokenizerTest {
     }
 
     @Test
+    void decomposedAccentsAreNormalisedIntoTheSameWord() {
+        String decomposed = "Re\u0301sume\u0301"; // e + combining acute accent
+
+        assertThat(Tokenizer.words(decomposed)).containsExactly("Résumé");
+    }
+
+    @Test
     void returnsEmptyListForBlankText() {
         assertThat(Tokenizer.words("  \n\t ")).isEmpty();
         assertThat(Tokenizer.words("")).isEmpty();
