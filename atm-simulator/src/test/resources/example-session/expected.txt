@@ -1,0 +1,44 @@
+$ Hello, Alice!
+Your balance is $0
+
+$ Your balance is $100
+
+$ Goodbye, Alice!
+
+$ Hello, Bob!
+Your balance is $0
+
+$ Your balance is $80
+
+$ Transferred $50 to Alice
+Your balance is $30
+
+$ Transferred $30 to Alice
+Your balance is $0
+Owed $70 to Alice
+
+$ Transferred $30 to Alice
+Your balance is $0
+Owed $40 to Alice
+
+$ Goodbye, Bob!
+
+$ Hello, Alice!
+Your balance is $210
+Owed $40 from Bob
+
+$ Your balance is $210
+Owed $10 from Bob
+
+$ Goodbye, Alice!
+
+$ Hello, Bob!
+Your balance is $0
+Owed $10 to Alice
+
+$ Transferred $10 to Alice
+Your balance is $90
+
+$ Goodbye, Bob!
+
+$ 

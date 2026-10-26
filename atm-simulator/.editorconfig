@@ -13,3 +13,7 @@ indent_size = 2
 
 [*.md]
 trim_trailing_whitespace = false
+
+# Console transcripts: the prompt "$ " ends with a space that is part of the output.
+[src/test/resources/example-session/*.txt]
+trim_trailing_whitespace = false
