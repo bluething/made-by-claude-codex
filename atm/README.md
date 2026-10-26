@@ -53,7 +53,9 @@ Things the spec does not say, and what I picked:
 
 - Amounts are positive whole dollars (all examples are integers), stored as `long`.
   One operation is capped at $1,000,000,000, like an ATM limit. That keeps totals far from
-  `Long.MAX_VALUE`, so a deposit that pays several creditors can't overflow halfway through.
+  `Long.MAX_VALUE` (billions of max-size operations away), so in practice a deposit that pays
+  several creditors won't overflow halfway through. It's not a hard guarantee; that would need
+  a two-phase apply (compute all changes, then write), which I skipped to keep `Bank` simple.
 - Only a deposit pays back debts. Money received from a transfer stays in the balance.
   The example only shows repayment on deposit.
 - `transfer` to an unknown customer is rejected, it does not create the customer.

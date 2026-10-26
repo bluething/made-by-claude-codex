@@ -15,8 +15,9 @@ public class Bank {
 
     /**
      * Per operation limit, like a real ATM. It also keeps balances and debts far
-     * away from Long.MAX_VALUE, so addExact can't fail halfway through a repayment
-     * and leave balances half updated.
+     * away from Long.MAX_VALUE: reaching it would take billions of max operations,
+     * so in practice addExact won't fail halfway through a repayment. Not a hard
+     * guarantee - that would need computing all changes before applying them.
      */
     static final long MAX_AMOUNT = 1_000_000_000L;
 
