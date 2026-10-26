@@ -54,7 +54,8 @@ public class Bank {
     }
 
     /**
-     * Sends as much as {@code from} can afford. Whatever is left
+     * If {@code to} owes {@code from}, that debt is reduced first and no money moves.
+     * The rest is paid from the balance, whatever cannot be paid
      * becomes a debt from {@code from} to {@code to}.
      */
     public List<Payment> transfer(String from, String to, long amount) {
@@ -66,13 +67,15 @@ public class Bank {
             throw new BankException("Unknown customer: " + to);
         }
 
+        long remaining = amount - reduceDebt(to, from, amount);
+
         List<Payment> payments = new ArrayList<>();
-        long cash = Math.min(balance(from), amount);
+        long cash = Math.min(balance(from), remaining);
         if (cash > 0) {
             move(from, to, cash);
             payments.add(new Payment(to, cash));
         }
-        long shortfall = amount - cash;
+        long shortfall = remaining - cash;
         if (shortfall > 0) {
             debts.merge(new DebtKey(from, to), shortfall, Math::addExact);
         }
@@ -88,6 +91,22 @@ public class Bank {
             }
         });
         return result;
+    }
+
+    /** Reduces what debtor owes creditor by at most {@code max}, returns the reduced amount. */
+    private long reduceDebt(String debtor, String creditor, long max) {
+        DebtKey key = new DebtKey(debtor, creditor);
+        Long owed = debts.get(key);
+        if (owed == null) {
+            return 0;
+        }
+        long reduced = Math.min(owed, max);
+        if (reduced == owed) {
+            debts.remove(key);
+        } else {
+            debts.put(key, owed - reduced);
+        }
+        return reduced;
     }
 
     private List<Payment> repayDebts(String debtor) {

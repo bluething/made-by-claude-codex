@@ -118,4 +118,31 @@ class BankTest {
         assertEquals(10, bank.balance("Bob"));
         assertEquals(List.of(), bank.debtsOf("Bob"));
     }
+
+    @Test
+    void transferToDebtorReducesTheirDebtInsteadOfMovingMoney() {
+        bank.open("Bob");
+        bank.deposit("Alice", 210);
+        bank.transfer("Bob", "Alice", 40);
+
+        List<Payment> payments = bank.transfer("Alice", "Bob", 30);
+
+        assertEquals(List.of(), payments);
+        assertEquals(210, bank.balance("Alice"));
+        assertEquals(List.of(new Debt("Bob", "Alice", 10)), bank.debtsOf("Alice"));
+    }
+
+    @Test
+    void transferToDebtorMoreThanTheyOweSendsTheRest() {
+        bank.open("Bob");
+        bank.deposit("Alice", 100);
+        bank.transfer("Bob", "Alice", 40);
+
+        List<Payment> payments = bank.transfer("Alice", "Bob", 50);
+
+        assertEquals(List.of(new Payment("Bob", 10)), payments);
+        assertEquals(90, bank.balance("Alice"));
+        assertEquals(10, bank.balance("Bob"));
+        assertEquals(List.of(), bank.debtsOf("Alice"));
+    }
 }
