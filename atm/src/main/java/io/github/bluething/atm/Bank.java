@@ -13,6 +13,13 @@ import java.util.Map;
  */
 public class Bank {
 
+    /**
+     * Per operation limit, like a real ATM. It also keeps balances and debts far
+     * away from Long.MAX_VALUE, so addExact can't fail halfway through a repayment
+     * and leave balances half updated.
+     */
+    static final long MAX_AMOUNT = 1_000_000_000L;
+
     private final Map<String, Long> balances = new HashMap<>();
     // Insertion ordered so the oldest debt comes first.
     private final Map<DebtKey, Long> debts = new LinkedHashMap<>();
@@ -39,13 +46,13 @@ public class Bank {
 
     /** Deposits, then uses the new balance to pay back debts, oldest first. */
     public List<Payment> deposit(String name, long amount) {
-        requirePositive(amount);
+        validateAmount(amount);
         balances.put(name, Math.addExact(balance(name), amount));
         return repayDebts(name);
     }
 
     public void withdraw(String name, long amount) {
-        requirePositive(amount);
+        validateAmount(amount);
         long balance = balance(name);
         if (amount > balance) {
             throw new BankException("Insufficient balance");
@@ -59,7 +66,7 @@ public class Bank {
      * becomes a debt from {@code from} to {@code to}.
      */
     public List<Payment> transfer(String from, String to, long amount) {
-        requirePositive(amount);
+        validateAmount(amount);
         if (from.equals(to)) {
             throw new BankException("Cannot transfer to yourself");
         }
@@ -135,9 +142,12 @@ public class Bank {
         balances.put(to, Math.addExact(balance(to), amount));
     }
 
-    private static void requirePositive(long amount) {
+    private static void validateAmount(long amount) {
         if (amount <= 0) {
             throw new BankException("Amount must be greater than 0");
+        }
+        if (amount > MAX_AMOUNT) {
+            throw new BankException("Amount must not exceed $" + MAX_AMOUNT);
         }
     }
 }

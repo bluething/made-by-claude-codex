@@ -51,6 +51,26 @@ class BankTest {
     }
 
     @Test
+    void rejectsAmountOverLimit() {
+        assertThrows(BankException.class, () -> bank.deposit("Alice", Bank.MAX_AMOUNT + 1));
+        assertEquals(0, bank.balance("Alice"));
+    }
+
+    @Test
+    void depositRepaysWithWholeBalanceNotOnlyTheDeposit() {
+        bank.open("Bob");
+        bank.open("Carol");
+        bank.deposit("Carol", 20);
+        bank.transfer("Bob", "Alice", 30);
+        bank.transfer("Carol", "Bob", 20); // Bob now has 20 and still owes 30
+
+        List<Payment> payments = bank.deposit("Bob", 5);
+
+        assertEquals(List.of(new Payment("Alice", 25)), payments);
+        assertEquals(List.of(new Debt("Bob", "Alice", 5)), bank.debtsOf("Bob"));
+    }
+
+    @Test
     void transferWithEnoughBalance() {
         bank.open("Bob");
         bank.deposit("Bob", 80);

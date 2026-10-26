@@ -51,8 +51,9 @@ replays the example session from the problem statement.
 
 Things the spec does not say, and what I picked:
 
-- Amounts are positive whole dollars (all examples are integers). Stored as `long`,
-  overflow throws instead of wrapping.
+- Amounts are positive whole dollars (all examples are integers), stored as `long`.
+  One operation is capped at $1,000,000,000, like an ATM limit. That keeps totals far from
+  `Long.MAX_VALUE`, so a deposit that pays several creditors can't overflow halfway through.
 - Only a deposit pays back debts. Money received from a transfer stays in the balance.
   The example only shows repayment on deposit.
 - `transfer` to an unknown customer is rejected, it does not create the customer.
