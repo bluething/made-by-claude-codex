@@ -96,6 +96,113 @@ class LedgerTest {
         void amountsMustBePositive() {
             assertThatThrownBy(() -> ledger.deposit(ALICE, Money.ZERO)).isInstanceOf(InvalidAmountException.class);
             assertThatThrownBy(() -> ledger.withdraw(ALICE, Money.ZERO)).isInstanceOf(InvalidAmountException.class);
+            assertThatThrownBy(() -> ledger.transfer(ALICE, BOB, Money.ZERO))
+                    .isInstanceOf(InvalidAmountException.class);
+        }
+    }
+
+    @Nested
+    class Transfer {
+
+        @Test
+        void paysInFullWhenBalanceIsEnough() {
+            ledger.deposit(BOB, usd(80));
+
+            List<Payment> payments = ledger.transfer(BOB, ALICE, usd(50));
+
+            assertThat(payments).containsExactly(new Payment(BOB, ALICE, usd(50)));
+            assertThat(ledger.balanceOf(BOB)).isEqualTo(usd(30));
+            assertThat(ledger.balanceOf(ALICE)).isEqualTo(usd(50));
+            assertThat(ledger.statementOf(BOB).owedTo()).isEmpty();
+        }
+
+        @Test
+        void shortfallBecomesDebtToTheTarget() {
+            ledger.deposit(BOB, usd(30));
+
+            List<Payment> payments = ledger.transfer(BOB, ALICE, usd(100));
+
+            assertThat(payments).containsExactly(new Payment(BOB, ALICE, usd(30)));
+            assertThat(ledger.balanceOf(BOB)).isEqualTo(Money.ZERO);
+            assertThat(ledger.statementOf(BOB).owedTo()).containsExactly(new DebtLine(ALICE, usd(70)));
+            assertThat(ledger.statementOf(ALICE).owedFrom()).containsExactly(new DebtLine(BOB, usd(70)));
+        }
+
+        @Test
+        void withEmptyBalanceEverythingBecomesDebtAndNoMoneyMoves() {
+            assertThat(ledger.transfer(BOB, ALICE, usd(10))).isEmpty();
+            assertThat(ledger.statementOf(BOB).owedTo()).containsExactly(new DebtLine(ALICE, usd(10)));
+        }
+
+        @Test
+        void debtToTheSameCreditorAccumulates() {
+            ledger.transfer(BOB, ALICE, usd(10));
+            ledger.transfer(BOB, ALICE, usd(5));
+
+            assertThat(ledger.statementOf(BOB).owedTo()).containsExactly(new DebtLine(ALICE, usd(15)));
+        }
+
+        @Test
+        void transferToDebtorCancelsTheirDebtInsteadOfMovingMoney() {
+            ledger.deposit(ALICE, usd(210));
+            ledger.transfer(BOB, ALICE, usd(40));
+
+            List<Payment> payments = ledger.transfer(ALICE, BOB, usd(30));
+
+            assertThat(payments).isEmpty();
+            assertThat(ledger.balanceOf(ALICE)).isEqualTo(usd(210));
+            assertThat(ledger.statementOf(ALICE).owedFrom()).containsExactly(new DebtLine(BOB, usd(10)));
+        }
+
+        @Test
+        void transferToDebtorForMoreThanTheyOweCancelsDebtAndPaysTheRest() {
+            ledger.deposit(ALICE, usd(210));
+            ledger.transfer(BOB, ALICE, usd(40));
+
+            List<Payment> payments = ledger.transfer(ALICE, BOB, usd(50));
+
+            assertThat(payments).containsExactly(new Payment(ALICE, BOB, usd(10)));
+            assertThat(ledger.balanceOf(ALICE)).isEqualTo(usd(200));
+            assertThat(ledger.balanceOf(BOB)).isEqualTo(usd(10));
+            assertThat(ledger.statementOf(ALICE).owedFrom()).isEmpty();
+            assertThat(ledger.statementOf(BOB).owedTo()).isEmpty();
+        }
+
+        @Test
+        void neverLeavesTwoCustomersOwingEachOther() {
+            ledger.transfer(BOB, ALICE, usd(40));
+
+            ledger.transfer(ALICE, BOB, usd(100)); // cancels 40, Alice has no cash, owes 60
+
+            assertThat(ledger.statementOf(ALICE).owedTo()).containsExactly(new DebtLine(BOB, usd(60)));
+            assertThat(ledger.statementOf(ALICE).owedFrom()).isEmpty();
+        }
+
+        @Test
+        void receivingATransferDoesNotRepayTheReceiversDebts() {
+            CustomerName carol = CustomerName.of("Carol");
+            ledger.openAccount(carol);
+            ledger.transfer(BOB, carol, usd(20));   // Bob owes Carol 20
+            ledger.deposit(ALICE, usd(50));
+
+            ledger.transfer(ALICE, BOB, usd(50));
+
+            assertThat(ledger.balanceOf(BOB)).isEqualTo(usd(50));
+            assertThat(ledger.statementOf(BOB).owedTo()).containsExactly(new DebtLine(carol, usd(20)));
+        }
+
+        @Test
+        void rejectsSelfTransfer() {
+            ledger.deposit(ALICE, usd(10));
+
+            assertThatThrownBy(() -> ledger.transfer(ALICE, ALICE, usd(5)))
+                    .isInstanceOf(TransferNotAllowedException.class);
+        }
+
+        @Test
+        void rejectsUnknownTarget() {
+            assertThatThrownBy(() -> ledger.transfer(ALICE, CustomerName.of("Ghost"), usd(5)))
+                    .isInstanceOf(UnknownCustomerException.class);
         }
     }
 }
