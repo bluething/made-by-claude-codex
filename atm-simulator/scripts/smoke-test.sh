@@ -9,8 +9,13 @@ set -euo pipefail
 readonly PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly FIXTURES="${PROJECT_DIR}/src/test/resources/example-session"
 
+readonly ACTUAL="$(mktemp)"
+trap 'rm -f "${ACTUAL}"' EXIT
+
 echo "smoke test: example session"
-diff -u "${FIXTURES}/expected.txt" <("${PROJECT_DIR}/start.sh" < "${FIXTURES}/input.txt")
+# Run first and diff after: inside a process substitution a failing start.sh would go unnoticed.
+"${PROJECT_DIR}/start.sh" < "${FIXTURES}/input.txt" > "${ACTUAL}"
+diff -u "${FIXTURES}/expected.txt" "${ACTUAL}"
 
 echo "smoke test: fresh state on every start"
 second_run="$(printf 'login Alice\n' | "${PROJECT_DIR}/start.sh")"
