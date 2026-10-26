@@ -21,7 +21,8 @@ import java.util.function.Predicate;
  *
  * <p>A ledger is <b>not thread safe</b> and its operations are <b>not atomic</b> on
  * their own. The store that owns it runs each operation on a {@link #copy()} and
- * publishes the copy only if the operation succeeds.
+ * publishes the copy only if the operation succeeds. A published ledger is
+ * {@linkplain #freeze() frozen}, so a reference that leaks out can't change it.
  */
 public final class Ledger implements LedgerView {
 
@@ -33,6 +34,7 @@ public final class Ledger implements LedgerView {
     private final Map<CustomerName, Money> balances;
     private final Map<DebtKey, Debt> debts;
     private long nextDebtSequence;
+    private boolean frozen;
 
     public Ledger() {
         this(new HashMap<>(), new HashMap<>(), 0);
@@ -44,13 +46,20 @@ public final class Ledger implements LedgerView {
         this.nextDebtSequence = nextDebtSequence;
     }
 
-    /** Independent copy. Cheap enough: all values inside are immutable. */
+    /** Independent, modifiable copy. Cheap enough: all values inside are immutable. */
     public Ledger copy() {
         return new Ledger(new HashMap<>(balances), new HashMap<>(debts), nextDebtSequence);
     }
 
+    /** Makes this ledger read-only for good; every change afterwards throws. */
+    public Ledger freeze() {
+        frozen = true;
+        return this;
+    }
+
     /** @return {@code true} if a new account was opened, {@code false} if it already existed */
     public boolean openAccount(CustomerName customer) {
+        requireNotFrozen();
         return balances.putIfAbsent(customer, Money.ZERO) == null;
     }
 
@@ -76,6 +85,7 @@ public final class Ledger implements LedgerView {
      * @return the repayments made, in order
      */
     public List<Payment> deposit(CustomerName customer, Money amount) {
+        requireNotFrozen();
         requirePositive(amount);
         credit(customer, amount);
         return repayDebtsOf(customer);
@@ -83,6 +93,7 @@ public final class Ledger implements LedgerView {
 
     /** @throws InsufficientFundsException if the balance is lower than the amount */
     public void withdraw(CustomerName customer, Money amount) {
+        requireNotFrozen();
         requirePositive(amount);
         if (balanceOf(customer).isLessThan(amount)) {
             throw new InsufficientFundsException();
@@ -102,6 +113,7 @@ public final class Ledger implements LedgerView {
      * @return the money that actually moved: empty, or a single payment
      */
     public List<Payment> transfer(CustomerName from, CustomerName to, Money amount) {
+        requireNotFrozen();
         requirePositive(amount);
         if (from.equals(to)) {
             throw new TransferNotAllowedException("Cannot transfer to yourself");
@@ -192,6 +204,12 @@ public final class Ledger implements LedgerView {
 
     private void debit(CustomerName customer, Money amount) {
         balances.put(customer, balanceOf(customer).minus(amount));
+    }
+
+    private void requireNotFrozen() {
+        if (frozen) {
+            throw new IllegalStateException("Ledger is frozen: change a copy() inside a store update instead");
+        }
     }
 
     private static void requirePositive(Money amount) {

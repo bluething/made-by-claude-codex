@@ -16,7 +16,8 @@ import java.util.function.Function;
  *   <li>only if it succeeds, the copy is published as the new current ledger.</li>
  * </ol>
  * A failed update simply drops its copy, so there is nothing to roll back. A published
- * ledger is never modified again, which is why reads need no lock at all.
+ * ledger is frozen and never modified again, which is why reads need no lock at all, and
+ * why a ledger that leaks out of a callback can't be used to bypass the lock.
  *
  * <p>Copying is O(accounts + debts) per update. That is fine for an in-memory
  * simulator; a database-backed store would use a database transaction instead.
@@ -24,7 +25,7 @@ import java.util.function.Function;
 public final class InMemoryLedgerStore implements LedgerStore {
 
     private final Lock writeLock = new ReentrantLock();
-    private volatile Ledger current = new Ledger();
+    private volatile Ledger current = new Ledger().freeze();
 
     @Override
     public <R> R read(Function<? super LedgerView, ? extends R> query) {
@@ -37,7 +38,7 @@ public final class InMemoryLedgerStore implements LedgerStore {
         try {
             Ledger working = current.copy();
             R result = update.apply(working);
-            current = working;
+            current = working.freeze();
             return result;
         } finally {
             writeLock.unlock();

@@ -55,6 +55,29 @@ class LedgerTest {
         }
 
         @Test
+        void frozenLedgerRejectsChangesButStillAnswersQueries() {
+            ledger.deposit(ALICE, usd(10));
+            ledger.freeze();
+
+            assertThatThrownBy(() -> ledger.openAccount(CustomerName.of("Carol")))
+                    .isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(() -> ledger.deposit(ALICE, usd(1))).isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(() -> ledger.withdraw(ALICE, usd(1))).isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(() -> ledger.transfer(ALICE, BOB, usd(1))).isInstanceOf(IllegalStateException.class);
+            assertThat(ledger.balanceOf(ALICE)).isEqualTo(usd(10));
+        }
+
+        @Test
+        void copyOfAFrozenLedgerCanBeChanged() {
+            ledger.freeze();
+
+            Ledger copy = ledger.copy();
+            copy.deposit(ALICE, usd(1));
+
+            assertThat(copy.balanceOf(ALICE)).isEqualTo(usd(1));
+        }
+
+        @Test
         void copyIsIndependent() {
             Ledger copy = ledger.copy();
             copy.deposit(ALICE, usd(10));

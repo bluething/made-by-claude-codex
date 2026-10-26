@@ -4,6 +4,7 @@ import io.github.bluething.atmsimulator.domain.AccountStatement;
 import io.github.bluething.atmsimulator.domain.BusinessException;
 import io.github.bluething.atmsimulator.domain.CustomerName;
 import io.github.bluething.atmsimulator.domain.DebtLine;
+import io.github.bluething.atmsimulator.domain.Ledger;
 import io.github.bluething.atmsimulator.domain.Money;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,6 +62,22 @@ class InMemoryLedgerStoreTest {
         assertThat(alice.balance()).isEqualTo(Money.ZERO);
         assertThat(bob.balance()).isEqualTo(Money.of(5));
         assertThat(bob.owedTo()).isEmpty();
+    }
+
+    @Test
+    void ledgerLeakedFromAnUpdateCannotBeChangedOutsideTheStore() {
+        Ledger leaked = store.update(ledger -> ledger);
+
+        assertThatThrownBy(() -> leaked.deposit(ALICE, Money.of(10))).isInstanceOf(IllegalStateException.class);
+        Money balance = store.read(view -> view.balanceOf(ALICE));
+        assertThat(balance).isEqualTo(Money.ZERO);
+    }
+
+    @Test
+    void ledgerLeakedFromAReadCannotBeChanged() {
+        Ledger leaked = (Ledger) store.read(view -> view);
+
+        assertThatThrownBy(() -> leaked.deposit(ALICE, Money.of(10))).isInstanceOf(IllegalStateException.class);
     }
 
     /**
