@@ -1,5 +1,6 @@
 package io.github.bluething.atmsimulator.domain;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -67,9 +68,17 @@ public final class Ledger implements LedgerView {
         return balance;
     }
 
-    public void deposit(CustomerName customer, Money amount) {
+    /**
+     * Deposits {@code amount}, then uses the whole balance to pay back the customer's
+     * debts, oldest first, until the balance or the debts run out. Creditors receiving
+     * a repayment do not repay their own debts in turn.
+     *
+     * @return the repayments made, in order
+     */
+    public List<Payment> deposit(CustomerName customer, Money amount) {
         requirePositive(amount);
         credit(customer, amount);
+        return repayDebtsOf(customer);
     }
 
     /** @throws InsufficientFundsException if the balance is lower than the amount */
@@ -125,6 +134,21 @@ public final class Ledger implements LedgerView {
                         .stream().map(debt -> new DebtLine(debt.creditor(), debt.amount())).toList(),
                 debtsWhere(debt -> debt.creditor().equals(customer))
                         .stream().map(debt -> new DebtLine(debt.debtor(), debt.amount())).toList());
+    }
+
+    private List<Payment> repayDebtsOf(CustomerName debtor) {
+        List<Payment> repayments = new ArrayList<>();
+        for (Debt debt : debtsWhere(d -> d.debtor().equals(debtor))) {
+            Money balance = balanceOf(debtor);
+            if (balance.isZero()) {
+                break;
+            }
+            Money paid = debt.amount().min(balance);
+            move(debtor, debt.creditor(), paid);
+            settle(new DebtKey(debtor, debt.creditor()), debt, paid);
+            repayments.add(new Payment(debtor, debt.creditor(), paid));
+        }
+        return List.copyOf(repayments);
     }
 
     /** Reduces what {@code debtor} owes {@code creditor} by at most {@code max}. */
