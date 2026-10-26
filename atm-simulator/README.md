@@ -32,7 +32,10 @@ only the session and you can pipe commands in: `./start.sh < commands.txt`.
 | `transfer [target] [amount]` | Transfers to another customer (see rules below) |
 | `logout` | Logs out |
 | `help` | Lists the commands |
-| `exit` | Logs out if needed and ends the session (end of input does the same) |
+| `exit` | Logs out if needed (saying goodbye) and ends the session |
+
+End of input (Ctrl-D, or the end of a piped file) also ends the session, but quietly:
+nothing more is printed, so piped scripts get exactly the output of their own commands.
 
 Amounts are positive with up to 2 decimals (`100`, `12.50`). Names are 1-32 characters
 from `A-Z a-z 0-9 _ -` and are case sensitive. Command keywords are case insensitive.
@@ -135,7 +138,7 @@ Each decision has a short record in [`docs/adr`](docs/adr):
 | Invalid input | `deposit abc`, `fly` | Message with the correct usage; session continues |
 | Business rule | not enough balance, not logged in | `BusinessException`; its message is shown as-is |
 | Unexpected bug | a `NullPointerException` | Logged to stderr (without the raw input), a generic message is shown, and the session continues. This is safe because the failed operation changed nothing |
-| Console I/O | stdin can't be read | Logged; the process exits with code 1 |
+| Console I/O | stdin can't be read, stdout is closed | Logged; the process exits with code 1 |
 
 Logging uses the JDK's `System.Logger`, with no extra dependency. Operations log at DEBUG,
 so stderr stays quiet in normal use.

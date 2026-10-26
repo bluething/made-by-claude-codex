@@ -14,8 +14,9 @@ handled carefully.
 `Money` is a record that wraps a `BigDecimal`:
 - it is always normalised to scale 2, so `5`, `5.0` and `5.00` are `equals` and have the
   same `hashCode`;
-- it is never negative and never rounded: an amount with more than 2 decimals is rejected
-  instead of losing money;
+- it is never negative and never rounded: an amount that has non-zero digits below one
+  cent (`1.005`) is rejected instead of losing money. Trailing zeros are harmless, so
+  `Money.of("1.500")` is simply `1.50`;
 - customer input is checked against a strict format (`\d{1,12}(\.\d{1,2})?`) before it
   becomes `Money`, so signs, exponents (`1e3`) and grouping (`1,000`) are rejected at the
   edge.

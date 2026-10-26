@@ -27,8 +27,12 @@ Alternatives considered:
 - `InMemoryLedgerStore` implements `update` as **copy-on-write**: it takes the lock, copies
   the current ledger, runs the function on the copy, and makes the copy current only if the
   function returns. If it throws, the copy is discarded, so there is nothing to roll back.
-- A ledger that has been made current is never changed again, so `read` needs no lock: a
-  `volatile` read is enough to see a complete, consistent ledger.
+- A ledger that has been made current is **frozen** and never changed again, so `read`
+  needs no lock: a `volatile` read is enough to see a complete, consistent ledger.
+  Freezing also means a ledger that leaks out of a callback (`update(l -> l)`, or a cast of
+  the `LedgerView`) can't be used to change state behind the lock.
+- **Nested updates are rejected.** With a reentrant lock, an inner update would publish its
+  own copy, and the outer update would then overwrite it, losing a write.
 
 ## Consequences
 

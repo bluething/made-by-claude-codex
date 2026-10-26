@@ -9,8 +9,9 @@ import java.util.regex.Pattern;
  *
  * <p>Backed by {@link BigDecimal} normalised to scale 2, so {@code 5}, {@code 5.0} and
  * {@code 5.00} are the same value and {@link #equals(Object)} behaves as expected.
- * Amounts are never rounded: input with more than two decimals is rejected
- * instead of silently losing money.
+ * Amounts are never rounded: a value with non-zero digits below one cent is rejected
+ * instead of silently losing money ({@code 1.500} is fine, {@code 1.005} is not).
+ * Customer input is held to a stricter format, see {@link #parsePositive(String)}.
  *
  * <p>A single currency is assumed, as in the problem statement.
  */
