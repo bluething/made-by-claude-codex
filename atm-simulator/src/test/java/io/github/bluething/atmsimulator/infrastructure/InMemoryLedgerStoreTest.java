@@ -74,6 +74,17 @@ class InMemoryLedgerStoreTest {
     }
 
     @Test
+    void nestedUpdateIsRejectedAndTheOuterUpdateRollsBack() {
+        assertThatThrownBy(() -> store.update(outer -> {
+            outer.deposit(ALICE, Money.of(10));
+            return store.update(inner -> inner.deposit(ALICE, Money.of(20)));
+        })).isInstanceOf(IllegalStateException.class).hasMessageContaining("Nested");
+
+        Money balance = store.read(view -> view.balanceOf(ALICE));
+        assertThat(balance).isEqualTo(Money.ZERO);
+    }
+
+    @Test
     void ledgerLeakedFromAReadCannotBeChanged() {
         Ledger leaked = (Ledger) store.read(view -> view);
 

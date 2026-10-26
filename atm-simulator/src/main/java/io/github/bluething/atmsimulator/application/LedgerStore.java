@@ -23,6 +23,8 @@ public interface LedgerStore {
     /**
      * Runs {@code update} as one transaction: if it returns, all of its changes become
      * visible together; if it throws, none of them do. Concurrent updates never interleave.
+     *
+     * @throws IllegalStateException if called from inside another update
      */
     <R> R update(Function<? super Ledger, ? extends R> update);
 }

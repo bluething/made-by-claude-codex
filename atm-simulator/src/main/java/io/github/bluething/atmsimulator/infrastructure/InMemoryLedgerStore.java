@@ -4,7 +4,6 @@ import io.github.bluething.atmsimulator.application.LedgerStore;
 import io.github.bluething.atmsimulator.domain.Ledger;
 import io.github.bluething.atmsimulator.domain.LedgerView;
 
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
@@ -24,7 +23,7 @@ import java.util.function.Function;
  */
 public final class InMemoryLedgerStore implements LedgerStore {
 
-    private final Lock writeLock = new ReentrantLock();
+    private final ReentrantLock writeLock = new ReentrantLock();
     private volatile Ledger current = new Ledger().freeze();
 
     @Override
@@ -34,6 +33,11 @@ public final class InMemoryLedgerStore implements LedgerStore {
 
     @Override
     public <R> R update(Function<? super Ledger, ? extends R> update) {
+        // The lock is reentrant, so without this check a nested update would work on its
+        // own copy and one of the two results would be silently lost.
+        if (writeLock.isHeldByCurrentThread()) {
+            throw new IllegalStateException("Nested updates are not supported; do all changes in one update");
+        }
         writeLock.lock();
         try {
             Ledger working = current.copy();
