@@ -3,6 +3,8 @@ package io.github.bluething.atm;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -46,5 +48,47 @@ class BankTest {
     void rejectsNonPositiveAmount() {
         assertThrows(BankException.class, () -> bank.deposit("Alice", 0));
         assertThrows(BankException.class, () -> bank.withdraw("Alice", -5));
+    }
+
+    @Test
+    void transferWithEnoughBalance() {
+        bank.open("Bob");
+        bank.deposit("Bob", 80);
+
+        List<Payment> payments = bank.transfer("Bob", "Alice", 50);
+
+        assertEquals(List.of(new Payment("Alice", 50)), payments);
+        assertEquals(30, bank.balance("Bob"));
+        assertEquals(50, bank.balance("Alice"));
+        assertEquals(List.of(), bank.debtsOf("Bob"));
+    }
+
+    @Test
+    void transferMoreThanBalanceCreatesDebt() {
+        bank.open("Bob");
+        bank.deposit("Bob", 30);
+
+        List<Payment> payments = bank.transfer("Bob", "Alice", 100);
+
+        assertEquals(List.of(new Payment("Alice", 30)), payments);
+        assertEquals(0, bank.balance("Bob"));
+        assertEquals(List.of(new Debt("Bob", "Alice", 70)), bank.debtsOf("Bob"));
+        assertEquals(List.of(new Debt("Bob", "Alice", 70)), bank.debtsOf("Alice"));
+    }
+
+    @Test
+    void debtAccumulates() {
+        bank.open("Bob");
+        bank.transfer("Bob", "Alice", 10);
+        bank.transfer("Bob", "Alice", 5);
+        assertEquals(List.of(new Debt("Bob", "Alice", 15)), bank.debtsOf("Bob"));
+    }
+
+    @Test
+    void cannotTransferToSelfOrUnknown() {
+        bank.deposit("Alice", 10);
+        assertThrows(BankException.class, () -> bank.transfer("Alice", "Alice", 5));
+        assertThrows(BankException.class, () -> bank.transfer("Alice", "Nobody", 5));
+        assertEquals(10, bank.balance("Alice"));
     }
 }

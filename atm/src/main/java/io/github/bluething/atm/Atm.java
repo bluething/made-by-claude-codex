@@ -3,6 +3,7 @@ package io.github.bluething.atm;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.List;
 
 /**
  * Reads commands line by line, keeps track of who is logged in
@@ -40,6 +41,9 @@ public class Atm {
                 case "login" -> login(arg(args, 1, "login [name]"));
                 case "deposit" -> deposit(parseAmount(arg(args, 1, "deposit [amount]")));
                 case "withdraw" -> withdraw(parseAmount(arg(args, 1, "withdraw [amount]")));
+                case "transfer" -> transfer(
+                        arg(args, 1, "transfer [target] [amount]"),
+                        parseAmount(arg(args, 2, "transfer [target] [amount]")));
                 case "logout" -> logout();
                 default -> out.println("Unknown command: " + args[0]);
             }
@@ -69,14 +73,32 @@ public class Atm {
         printStatus();
     }
 
+    private void transfer(String target, long amount) {
+        printPayments(bank.transfer(requireLogin(), target, amount));
+        printStatus();
+    }
+
     private void logout() {
         String name = requireLogin();
         currentUser = null;
         out.println("Goodbye, " + name + "!");
     }
 
+    private void printPayments(List<Payment> payments) {
+        for (Payment payment : payments) {
+            out.println("Transferred $" + payment.amount() + " to " + payment.to());
+        }
+    }
+
     private void printStatus() {
         out.println("Your balance is $" + bank.balance(currentUser));
+        for (Debt debt : bank.debtsOf(currentUser)) {
+            if (debt.debtor().equals(currentUser)) {
+                out.println("Owed $" + debt.amount() + " to " + debt.creditor());
+            } else {
+                out.println("Owed $" + debt.amount() + " from " + debt.debtor());
+            }
+        }
     }
 
     private String requireLogin() {
