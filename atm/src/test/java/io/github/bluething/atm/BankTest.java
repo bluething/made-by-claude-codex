@@ -91,4 +91,31 @@ class BankTest {
         assertThrows(BankException.class, () -> bank.transfer("Alice", "Nobody", 5));
         assertEquals(10, bank.balance("Alice"));
     }
+
+    @Test
+    void depositRepaysDebt() {
+        bank.open("Bob");
+        bank.transfer("Bob", "Alice", 40);
+
+        List<Payment> payments = bank.deposit("Bob", 30);
+
+        assertEquals(List.of(new Payment("Alice", 30)), payments);
+        assertEquals(0, bank.balance("Bob"));
+        assertEquals(30, bank.balance("Alice"));
+        assertEquals(List.of(new Debt("Bob", "Alice", 10)), bank.debtsOf("Bob"));
+    }
+
+    @Test
+    void depositRepaysOldestDebtFirstAndKeepsTheRest() {
+        bank.open("Bob");
+        bank.open("Carol");
+        bank.transfer("Bob", "Carol", 20);
+        bank.transfer("Bob", "Alice", 20);
+
+        List<Payment> payments = bank.deposit("Bob", 50);
+
+        assertEquals(List.of(new Payment("Carol", 20), new Payment("Alice", 20)), payments);
+        assertEquals(10, bank.balance("Bob"));
+        assertEquals(List.of(), bank.debtsOf("Bob"));
+    }
 }

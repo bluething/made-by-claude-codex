@@ -2,6 +2,7 @@ package io.github.bluething.atm;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,9 +37,11 @@ public class Bank {
         return balance;
     }
 
-    public void deposit(String name, long amount) {
+    /** Deposits, then uses the new balance to pay back debts, oldest first. */
+    public List<Payment> deposit(String name, long amount) {
         requirePositive(amount);
         balances.put(name, Math.addExact(balance(name), amount));
+        return repayDebts(name);
     }
 
     public void withdraw(String name, long amount) {
@@ -85,6 +88,27 @@ public class Bank {
             }
         });
         return result;
+    }
+
+    private List<Payment> repayDebts(String debtor) {
+        List<Payment> payments = new ArrayList<>();
+        Iterator<Map.Entry<DebtKey, Long>> it = debts.entrySet().iterator();
+        while (it.hasNext() && balance(debtor) > 0) {
+            Map.Entry<DebtKey, Long> debt = it.next();
+            if (!debt.getKey().debtor().equals(debtor)) {
+                continue;
+            }
+            String creditor = debt.getKey().creditor();
+            long paid = Math.min(balance(debtor), debt.getValue());
+            move(debtor, creditor, paid);
+            payments.add(new Payment(creditor, paid));
+            if (paid == debt.getValue()) {
+                it.remove();
+            } else {
+                debt.setValue(debt.getValue() - paid);
+            }
+        }
+        return payments;
     }
 
     private void move(String from, String to, long amount) {

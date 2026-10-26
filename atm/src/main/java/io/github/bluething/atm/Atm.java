@@ -64,7 +64,7 @@ public class Atm {
     }
 
     private void deposit(long amount) {
-        bank.deposit(requireLogin(), amount);
+        printPayments(bank.deposit(requireLogin(), amount));
         printStatus();
     }
 
