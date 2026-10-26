@@ -13,6 +13,7 @@ import java.io.PrintWriter;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.io.Writer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -25,13 +26,17 @@ class AtmConsoleTest {
 
     private static String run(LedgerStore store, Reader input) throws IOException {
         StringWriter output = new StringWriter();
+        run(store, input, new PrintWriter(output));
+        return output.toString();
+    }
+
+    private static void run(LedgerStore store, Reader input, PrintWriter output) throws IOException {
         new AtmConsole(
                 new AtmSession(new BankService(store)),
                 new CommandParser(),
                 new ConsolePresenter(),
                 new BufferedReader(input),
-                new PrintWriter(output)).run();
-        return output.toString();
+                output).run();
     }
 
     @Test
@@ -113,5 +118,27 @@ class AtmConsoleTest {
         };
 
         assertThatThrownBy(() -> run(new InMemoryLedgerStore(), broken)).isInstanceOf(IOException.class);
+    }
+
+    @Test
+    void outputFailureStopsTheConsole() {
+        Writer broken = new Writer() {
+            @Override
+            public void write(char[] buffer, int offset, int length) throws IOException {
+                throw new IOException("stdout closed");
+            }
+
+            @Override
+            public void flush() {
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+
+        assertThatThrownBy(() -> run(new InMemoryLedgerStore(), new StringReader("login Alice\n"), new PrintWriter(broken)))
+                .isInstanceOf(IOException.class)
+                .hasMessage("Console output failed");
     }
 }

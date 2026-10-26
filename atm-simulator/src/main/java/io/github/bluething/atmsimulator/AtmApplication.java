@@ -37,7 +37,7 @@ public final class AtmApplication {
         try {
             console.run();
         } catch (IOException e) {
-            LOG.log(Level.ERROR, "Console input failed", e);
+            LOG.log(Level.ERROR, "Console I/O failed", e);
             System.exit(1);
         }
     }

@@ -49,12 +49,12 @@ public final class AtmConsole {
     /**
      * Runs until the user types {@code exit} or the input ends.
      *
-     * @throws IOException if the input can't be read
+     * @throws IOException if the input can't be read or the output can't be written
      */
     public void run() throws IOException {
         while (!exitRequested) {
             out.print(PROMPT);
-            out.flush();
+            flush();
             String line = in.readLine();
             if (line == null) {
                 out.println();
@@ -64,7 +64,14 @@ public final class AtmConsole {
                 print(handle(line));
             }
         }
-        out.flush();
+        flush();
+    }
+
+    /** PrintWriter swallows I/O errors, so they have to be checked explicitly. */
+    private void flush() throws IOException {
+        if (out.checkError()) { // checkError() also flushes
+            throw new IOException("Console output failed");
+        }
     }
 
     private List<String> handle(String line) {
